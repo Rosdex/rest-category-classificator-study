@@ -1,5 +1,7 @@
 import os
 import uuid
+import requests
+import json
 
 #from classificator import CategoryClassificator
 from job_model import JobStatus, Job, JobSchema
@@ -68,6 +70,25 @@ def perform_job(uuid):
     if job != None:
         job.exec_job()
         return "", 204
+    else:
+        return "", 404
+
+@app.route('/jobs/<uuid>/public-model', methods = ['POST'])
+def public_model(uuid):
+    job = get_job_by_id(uuid)
+
+    if job != None:
+        vectoriz_filename = '\\'.join([RESULT_DIR, job.get_vectorizator_file()])
+        classif_filename = '\\'.join([RESULT_DIR, job.get_classificator_file()]) 
+
+        url = 'http://127.0.0.1:5001/ml-models'
+
+        multiple_files = [
+            ('file', ('svm.sav', open(classif_filename, 'rb'), 'application/octet-stream')),
+            ('file', ('vectorizator.sav', open(vectoriz_filename, 'rb'), 'application/octet-stream'))]
+        r = requests.post(url, files=multiple_files)
+
+        return r.text, 204
     else:
         return "", 404
 

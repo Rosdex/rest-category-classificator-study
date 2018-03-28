@@ -39,9 +39,14 @@ class Job():
 
         self.status = JobStatus.DONE
 
-
     def get_id(self):
         return self.uuid
+
+    def get_vectorizator_file(self):
+        return self.output_vectorizator_file
+
+    def get_classificator_file(self):
+        return self.output_model_file
 
     def check_status(self):
         result = False
