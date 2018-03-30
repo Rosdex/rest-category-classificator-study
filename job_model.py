@@ -1,13 +1,13 @@
+# -*- encoding: utf-8 -*-
+import os
 import datetime as dt
 import csv
-
-from classificator_study_module import CategoryClassificatorStudy
 
 from marshmallow import Schema, fields
 from enum import Enum
 
-UPLOAD_DIR = 'uploads'
-RESULT_DIR = 'results'
+from settings import BaseConfig
+from classificator_study_module import CategoryClassificatorStudy
 
 class JobStatus(Enum):
     CREATED = "CREATED"
@@ -28,6 +28,9 @@ class Job():
         self.created_at = dt.datetime.now()
 
     def exec_job(self):
+        # Setup status Performing
+        self.status = JobStatus.PERFORMING
+
         # Create Study module
         study_module = CategoryClassificatorStudy()
 
@@ -37,6 +40,7 @@ class Job():
         # Save model
         self.output_vectorizator_file, self.output_model_file = study_module.save_model_files(self.uuid)
 
+        # Set status Done
         self.status = JobStatus.DONE
 
     def get_id(self):
@@ -49,12 +53,10 @@ class Job():
         return self.output_model_file
 
     def check_status(self):
-        result = False
-
         if self.status != JobStatus.DONE:
-            result = True
-
-        return result
+            return True
+        else:
+            return False
 
     def __repr__(self):
         return '<Job(name={self.uuid!r})>'.format(self=self)

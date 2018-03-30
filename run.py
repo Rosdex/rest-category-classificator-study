@@ -1,22 +1,21 @@
+# -*- encoding: utf-8 -*-
 import os
 import uuid
 import requests
 import json
 
-#from classificator import CategoryClassificator
-from job_model import JobStatus, Job, JobSchema
 from flask import Flask, request, send_file,  jsonify
+from threading import Thread
 
-# Constants
-# =========
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = 'uploads'
-RESULT_DIR = 'results'
+from settings import BaseConfig
+from job_model import JobStatus, Job, JobSchema
 
 # Extensions initialization
 # =========================
 app = Flask(__name__)
 
+# Data layer - Collections
+# ========================
 jobs = []
 
 # Routes
@@ -46,20 +45,15 @@ def create_job():
     # Step 3 - Save data about Job
     jobs.append(job)
 
-    # Step 4 - Prepare response 
-    schema = JobSchema(many=False)
-    job_dump = schema.dump(job)
-
-    return jsonify(job_dump.data)
+    # Step 4 - Send response 
+    return job_to_json(job)
 
 @app.route('/jobs/<uuid>', methods = ['GET'])
 def get_job(uuid):
     job = get_job_by_id(uuid)
 
-    if job != None:
-        schema = JobSchema(many=False)
-        job_dump = schema.dump(job)
-        return jsonify(job_dump.data)
+    if job:
+        return job_to_json(job)
     else:
         return "", 404
 
@@ -67,9 +61,10 @@ def get_job(uuid):
 def perform_job(uuid):
     job = get_job_by_id(uuid)
 
-    if job != None:
-        job.exec_job()
-        return "", 204
+    if job:
+        thr = Thread(target=perform_async_job, args=[app, job])
+        thr.start()
+        return job_to_json(job)
     else:
         return "", 404
 
@@ -77,17 +72,15 @@ def perform_job(uuid):
 def public_model(uuid):
     job = get_job_by_id(uuid)
 
-    if job != None:
-        vectoriz_filename = '\\'.join([RESULT_DIR, job.get_vectorizator_file()])
-        classif_filename = '\\'.join([RESULT_DIR, job.get_classificator_file()]) 
-
-        url = 'http://127.0.0.1:5001/ml-models'
+    if job:
+        vectoriz_filename = '\\'.join([BaseConfig.RESULT_DIR, job.get_vectorizator_file()])
+        classif_filename = '\\'.join([BaseConfig.RESULT_DIR, job.get_classificator_file()]) 
+        url = PUBLIC_MODEL_URL
 
         multiple_files = [
             ('file', ('svm.sav', open(classif_filename, 'rb'), 'application/octet-stream')),
             ('file', ('vectorizator.sav', open(vectoriz_filename, 'rb'), 'application/octet-stream'))]
         r = requests.post(url, files=multiple_files)
-
         return r.text, 204
     else:
         return "", 404
@@ -95,19 +88,27 @@ def public_model(uuid):
 # Helper functions
 # ================
 def get_job_by_id(uuid):
-    target_job = None
-
     for job in jobs:
         if job.get_id() == uuid:
-            target_job = job
-
-    return target_job
+            return job
+    return None
 
 def upload_file(name_prefix):
-    target = os.path.join(APP_ROOT, UPLOAD_DIR)
+    target = os.path.join(BaseConfig.APP_ROOT, BaseConfig.UPLOAD_DIR)
 
     for upload in request.files.getlist("file"):
         filename = '_'.join([name_prefix, upload.filename])
         upload.save('/'.join([target, filename]))
 
     return filename
+
+def perform_async_job(app, job):
+    with app.app_context():
+        print('----- Start async Job -----')
+        job.exec_job()
+        print('----- End async Job -----')
+
+def job_to_json(job):
+    schema = JobSchema(many=False)
+    job_dump = schema.dump(job)
+    return jsonify(job_dump.data)

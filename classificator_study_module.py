@@ -1,3 +1,5 @@
+# -*- encoding: utf-8 -*-
+import os
 import numpy as np
 import pandas as pd
 import os
@@ -8,20 +10,14 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.externals import joblib
 from sklearn.utils import shuffle
 
-#wrapper for Tomita parser
+from settings import BaseConfig
 from tomita_parser import TomitaParser
-
-UPLOAD_DIR = 'uploads'
-RESULT_DIR = 'results'
-BASE_PATH = os.path.dirname(os.path.abspath(__file__))
-TOMITA_BIN_PATH = '\\'.join([BASE_PATH, 'tomita', 'tomitaparser.exe'])
-TOMITA_CONFIG_PATH = '\\'.join([BASE_PATH, 'tomita', 'config', 'config.proto'])
 
 class CategoryClassificatorStudy:
 
     def __init__(self):
         # prepare Tomita Parser
-        self.tomita = TomitaParser(TOMITA_BIN_PATH, TOMITA_CONFIG_PATH, debug=False)
+        self.tomita = TomitaParser(BaseConfig.TOMITA_BIN_PATH, BaseConfig.TOMITA_CONFIG_PATH, debug=False)
         self.vectorizer = None
         self.ml_model = None
         self.model_acc = 0
@@ -65,7 +61,7 @@ class CategoryClassificatorStudy:
         return 0
 
     def read_dataset(self, input_file):
-        filename = '\\'.join([UPLOAD_DIR, input_file])
+        filename = '\\'.join([BaseConfig.UPLOAD_DIR, input_file])
         names = []
         labels = []
     
@@ -96,7 +92,6 @@ class CategoryClassificatorStudy:
     def create_vectorizer(self, names):
         # create the transform
         vectorizer = TfidfVectorizer(stop_words='english')
-
         # tokenize and build vocab
         vectorizer.fit(names)
 
@@ -141,17 +136,16 @@ class CategoryClassificatorStudy:
         #compare predicted and expected output
         result = np.mean(predicted_Y == test_Y)
         print('Model accuracy = {0}'.format(result))
-
         return result
 
     def save_model_files(self, uuid):
         #Save vectorizer
         vectorizator_filename = '_'.join([uuid, 'vectorizator.sav'])
-        joblib.dump(self.vectorizer, '\\'.join([RESULT_DIR, vectorizator_filename]))
+        joblib.dump(self.vectorizer, '\\'.join([BaseConfig.RESULT_DIR, vectorizator_filename]))
 
         #Save classification model
         model_filename = '_'.join([uuid, 'svm.sav'])
-        joblib.dump(self.ml_model, '\\'.join([RESULT_DIR, model_filename]))
+        joblib.dump(self.ml_model, '\\'.join([BaseConfig.RESULT_DIR, model_filename]))
 
         return vectorizator_filename, model_filename
 
@@ -166,6 +160,6 @@ class CategoryClassificatorStudy:
     
         for i in range(0, vector.shape[1]):
             vec_list.append(vec_arr[0,i])
-        
+
         return np.array(vec_list)
 
