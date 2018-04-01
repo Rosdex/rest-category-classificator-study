@@ -15,6 +15,9 @@ class JobStatus(Enum):
     DONE = "DONE"
     ERROR = "ERROR"
 
+    def __str__(self):
+        return str(self.value)
+
 class Job():
     def __init__(self, uuid, input_fiename):
         print('Create job with id = {0}'.format(uuid))
@@ -52,8 +55,8 @@ class Job():
     def get_classificator_file(self):
         return self.output_model_file
 
-    def check_status(self):
-        if self.status != JobStatus.DONE:
+    def is_done(self):
+        if self.status == JobStatus.DONE:
             return True
         else:
             return False
